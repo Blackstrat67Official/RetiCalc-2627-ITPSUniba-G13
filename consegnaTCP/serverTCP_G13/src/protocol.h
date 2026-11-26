@@ -8,6 +8,7 @@ typedef int socklen_t;
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <signal.h>
 #define closesocket close
 #endif
 
@@ -15,6 +16,8 @@ typedef int socklen_t;
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <errno.h>
+#include <limits.h>
 
 #define DEFAULT_PORT 5193
 #define QLEN 5
@@ -23,16 +26,20 @@ typedef int socklen_t;
 #define WELCOME_MSG "connessione avvenuta"
 #define QUIT_MSG "QUIT"
 
-/* Inizializzazione e pulizia libreria socket (portabile Windows/POSIX) */
+/* Inizializzazione e pulizia libreria socket (Windows/POSIX) */
 int init_sockets(void);
 void cleanup_sockets(void);
 void error_handler(const char *error_message);
 
-/* Funzioni di trasporto affidabile su stream TCP */
+/* Validazione portabile di indirizzi IPv4 e porte TCP */
+int parse_ipv4_address(const char *ip_str, struct in_addr *out_addr);
+int parse_port(const char *port_str, uint16_t *out_port);
+
+/* Trasporto affidabile su stream TCP */
 int send_all(int sock, const char *buf, int len);
 int recv_all(int sock, char *buf, int len);
 
-/* Funzioni applicative del protocollo */
+/* Primitive del protocollo applicativo */
 int send_string(int sock, const char *str);
 int recv_string(int sock, char *buf, int max_len);
 int send_numbers(int sock, int32_t n1, int32_t n2, int32_t n3);
