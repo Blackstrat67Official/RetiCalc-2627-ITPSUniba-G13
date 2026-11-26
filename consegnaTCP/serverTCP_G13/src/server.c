@@ -16,7 +16,9 @@ static void handle_client(int client_socket) {
             break;
         }
 
-        int32_t res = n1 + n2 - n3;
+        /* Calcolo su 64 bit per evitare undefined behavior su overflow */
+        int64_t calc = (int64_t)n1 + (int64_t)n2 - (int64_t)n3;
+        int32_t res = (int32_t)calc;
 
         /* Visualizza sullo std output "la somma di n1+n2-n3=res" */
         printf("la somma di %d+%d-%d=%d\n", n1, n2, n3, res);
@@ -41,13 +43,12 @@ static void handle_client(int client_socket) {
 }
 
 int main(int argc, char *argv[]) {
-    int port = DEFAULT_PORT;
+    uint16_t port = DEFAULT_PORT;
+
     if (argc > 1) {
-        int parsed_port = atoi(argv[1]);
-        if (parsed_port > 0 && parsed_port <= 65535) {
-            port = parsed_port;
-        } else {
-            printf("Porta non valida. Uso porta di default %d.\n", DEFAULT_PORT);
+        if (parse_port(argv[1], &port) < 0) {
+            printf("Porta '%s' non valida. Uso porta di default %u.\n", argv[1], DEFAULT_PORT);
+            port = DEFAULT_PORT;
         }
     }
 
@@ -55,7 +56,6 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-    /* Creazione della socket */
     int server_socket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (server_socket < 0) {
         error_handler("Creazione della socket fallita.");
@@ -66,12 +66,11 @@ int main(int argc, char *argv[]) {
     int opt = 1;
     setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, (const char *)&opt, sizeof(opt));
 
-    /* Binding dell'indirizzo */
     struct sockaddr_in sad;
     memset(&sad, 0, sizeof(sad));
     sad.sin_family = AF_INET;
     sad.sin_addr.s_addr = INADDR_ANY;
-    sad.sin_port = htons((uint16_t)port);
+    sad.sin_port = htons(port);
 
     if (bind(server_socket, (struct sockaddr *)&sad, sizeof(sad)) < 0) {
         error_handler("bind() fallita.");
@@ -88,7 +87,7 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-    printf("Server in ascolto sulla porta %d...\n", port);
+    printf("Server in ascolto sulla porta %u...\n", port);
 
     while (1) {
         struct sockaddr_in cad;
@@ -105,7 +104,7 @@ int main(int argc, char *argv[]) {
 
         handle_client(client_socket);
 
-        /* 11) Chiude la connessione con il singolo client e rimane in ascolto */
+        /* 11) Chiude la connessione con il client corrente e rimane in ascolto */
         closesocket(client_socket);
     }
 
